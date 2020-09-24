@@ -17,6 +17,7 @@ parser.add_argument('--shared', default=None)
 parser.add_argument('--depth', default=18, type=int)
 parser.add_argument('--group_norm', default=0, type=int)
 parser.add_argument('--batch_size', default=32, type=int)
+parser.add_argument('--norm_slow_adapt', default=0, type=int)
 ########################################################################
 parser.add_argument('--lr', default=0.001, type=float)
 parser.add_argument('--niter', default=10, type=int)

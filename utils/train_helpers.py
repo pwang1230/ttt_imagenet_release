@@ -11,6 +11,7 @@ import torch.utils.data
 
 from utils.rotation import RotateImageFolder
 from models.SSHead import *
+from norm_module import TTTBatchNorm2d, TTTGroupNorm
 
 normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
 tr_transforms = transforms.Compose([transforms.RandomResizedCrop(224),
@@ -29,13 +30,25 @@ common_corruptions = ['gaussian_noise', 'shot_noise', 'impulse_noise', 'defocus_
 	                    'motion_blur', 'zoom_blur', 'snow', 'frost', 'fog',
 	                    'brightness', 'contrast', 'elastic_transform', 'pixelate', 'jpeg_compression']
 
+print('==> Building model..', end='')
 def build_model(args):
-	if args.group_norm == 0:
-		norm_layer = None
-	else:
+	if args.group_norm == 0: #Batch normalization
+		#norm_layer = None
+		print('with BN:')
+		print('\t==> norm_slow_adapt:',args.norm_slow_adapt)
+		print('\t==> momentum:',args.norm_momentum)
+		def bn_helper(num_features):
+			return TTTBatchNorm2d(num_features, ttt=args.norm_slow_adapt, \
+					momentum=args.norm_momentum, track_running_stats=True )
+		norm_layer = bn_helper
+	else: #Group normalization
+		print('with GN:')
+		print('\t==> num_groups:',args.group_norm)
 		def gn_helper(planes):
 			return nn.GroupNorm(args.group_norm, planes)
 		norm_layer = gn_helper
+
+	
 
 	width = 1
 	if args.depth == 152:

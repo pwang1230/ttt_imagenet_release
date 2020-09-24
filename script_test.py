@@ -1,13 +1,26 @@
 from subprocess import call
 import sys
+import argparse
 
-level = int(sys.argv[1])
-shared = sys.argv[2]
-setting = sys.argv[3]
-name = sys.argv[4]
+parser = argparse.ArgumentParser()
+parser.add_argument('--level', default=0, type=int)
+parser.add_argument('--shared', default='layer3')
+parser.add_argument('--setting', default=None, type=str)
+parser.add_argument('--norm_slow_adapt', action='store_true')
+parser.add_argument('--norm_momentum', default=0.9, type=float)
+parser.add_argument('--name', default=None, type=str)
+########################################################################
+args = parser.parse_args()
+
+level = args.level
+shared = args.shared
+setting = args.setting
+name = args.name
+norm_momentum = args.norm_momentum
+norm_slow_adapt = args.norm_slow_adapt
 
 dataroot = '--dataroot '
-dataroot += '/data/datasets/imagenet/'		# PLEASE EDIT THIS
+dataroot += '/proj/vondrick/portia/ImageNet-C/'		# PLEASE EDIT THIS
 
 common_corruptions = ['gaussian_noise', 'shot_noise', 'impulse_noise', 'defocus_blur', 'glass_blur',
                     'motion_blur', 'zoom_blur', 'snow', 'frost', 'fog',
@@ -63,6 +76,8 @@ for corruption in common_corruptions:
 						dataroot,
 						online_tag,
 						shuffle_tag,
+						'--norm_slow_adapt %d' %(norm_slow_adapt),
+						'--norm_momentum %f' %(norm_momentum),
 						'--group_norm	32',
 						'--level 		%d' %(level),
 						'--corruption	%s' %(corruption),
