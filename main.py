@@ -25,6 +25,7 @@ parser.add_argument('--start_epoch', default=1, type=int)
 parser.add_argument('--print_freq', default=10, type=int)
 parser.add_argument('--rotation',action='store_true')
 parser.add_argument('--lr', default=0.1, type=float)
+parser.add_argument('--lr_rotation', default=0.01, type=float)
 ########################################################################
 parser.add_argument('--resume', default=None)
 parser.add_argument('--outf', default='.')
@@ -39,6 +40,7 @@ _, trloader = prepare_train_data(args)
 
 parameters = list(net.parameters())+list(head.parameters())
 optimizer = torch.optim.SGD(parameters, lr=args.lr, momentum=0.9, weight_decay=1e-4)
+optimizer_ss = torch.optim.SGD(parameters, lr=args.lr_rotation, momentum=0.9, weight_decay=1e-4)
 criterion = nn.CrossEntropyLoss(reduction='none').cuda()
 
 def train(trloader, epoch):
@@ -54,11 +56,16 @@ def train(trloader, epoch):
 	end = time.time()
 	for i, dl in enumerate(trloader):
 		data_time.update(time.time() - end)
-		optimizer.zero_grad()
+		optimizer_ss.zero_grad()
 
 		inputs_cls, labels_cls = dl[0].cuda(), dl[1].cuda()
 		outputs_cls = net(inputs_cls)
 		loss_cls = criterion(outputs_cls, labels_cls)
+
+		### appended ###
+		loss_cls.backward()
+		optimizer_ss.step()
+
 		loss = loss_cls.mean()
 		losses.update(loss.item(), len(labels_cls))
 		
@@ -66,6 +73,8 @@ def train(trloader, epoch):
 		acc1 = predicted.eq(labels_cls).sum().item() / len(labels_cls)
 		top1.update(acc1, len(labels_cls))
 
+
+		optimizer.zero_grad()
 		if args.shared is not None:
 			inputs_ssh, labels_ssh = dl[2].cuda(), dl[3].cuda()
 			outputs_ssh = ssh(inputs_ssh)
