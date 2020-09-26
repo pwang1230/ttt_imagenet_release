@@ -116,7 +116,7 @@ for epoch in range(args.start_epoch, args.epochs+1):
 	all_err_ssh.append(err_ssh)
 	torch.save((all_err_cls, all_err_ssh), args.outf + '/loss.pth')
 	plot_epochs(all_err_cls, all_err_ssh, args.outf + '/loss.pdf')
-
+	torch.save(copy.deepcopy(net.state_dict()), args.outf+'/resnet18.sav')
 	state = {'args': args, 'err_cls': err_cls, 'err_ssh': err_ssh, 
 				'optimizer': optimizer.state_dict(), 'net': net.state_dict(), 'head': head.state_dict()}
 	torch.save(state, args.outf + '/ckpt.pth')
