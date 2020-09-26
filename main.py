@@ -10,18 +10,20 @@ from utils.test_helpers import test
 from utils.train_helpers import *
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--dataroot', default='/data/datasets/imagenet/')
+parser.add_argument('--dataroot', default='/proj/vondrick/datasets/ImageNet-ILSVRC2012/')
 parser.add_argument('--shared', default=None)
 ########################################################################
 parser.add_argument('--depth', default=18, type=int)
 parser.add_argument('--group_norm', default=0, type=int)
-parser.add_argument('--batch_size', default=256, type=int)
+parser.add_argument('--batch_size', default=128, type=int)
 parser.add_argument('--workers', default=8, type=int)
 parser.add_argument('--norm_slow_adapt', action='store_true')
+parser.add_argument('--norm_momentum', default=0.9, type=float)
 ########################################################################
 parser.add_argument('--epochs', default=90, type=int)
 parser.add_argument('--start_epoch', default=1, type=int)
 parser.add_argument('--print_freq', default=10, type=int)
+parser.add_argument('--rotation',action='store_true')
 parser.add_argument('--lr', default=0.1, type=float)
 ########################################################################
 parser.add_argument('--resume', default=None)

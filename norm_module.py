@@ -82,5 +82,5 @@ class TTTGroupNorm(nn.Module):
 			#x = (x-mean) / (var+self.eps).sqrt()			
 			x = (x-self.running_mean) / (self.running_var+self.eps).sqrt()
 			x = x.view(N,C,H,W)
-	return x * self.weight + self.bias
+		return x * self.weight + self.bias
 
