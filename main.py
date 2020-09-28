@@ -46,16 +46,16 @@ criterion = nn.CrossEntropyLoss(reduction='none').cuda()
 def train(trloader, epoch):
 	net.train()
 	ssh.train()
-	batch_time = AverageMeter('Time', ':6.3f')
-	data_time = AverageMeter('Data', ':6.3f')
+	#batch_time = AverageMeter('Time', ':6.3f')
+	#data_time = AverageMeter('Data', ':6.3f')
 	losses = AverageMeter('Loss', ':.4e')
 	top1 = AverageMeter('Acc@1', ':6.2f')
-	progress = ProgressMeter(len(trloader), batch_time, data_time, losses, top1, 
+	progress = ProgressMeter(len(trloader), losses, top1, 
 											prefix="Epoch: [{}]".format(epoch))
 
 	end = time.time()
 	for i, dl in enumerate(trloader):
-		data_time.update(time.time() - end)
+		#data_time.update(time.time() - end)
 		optimizer_ss.zero_grad()
 
 		inputs_cls, labels_cls = dl[0].cuda(), dl[1].cuda()
@@ -63,10 +63,9 @@ def train(trloader, epoch):
 		loss_cls = criterion(outputs_cls, labels_cls)
 
 		### appended ###
-		loss_cls.backward()
-		optimizer_ss.step()
-
 		loss = loss_cls.mean()
+		loss.backward()
+		optimizer_ss.step()
 		losses.update(loss.item(), len(labels_cls))
 		
 		_, predicted = outputs_cls.max(1)
@@ -79,13 +78,13 @@ def train(trloader, epoch):
 			inputs_ssh, labels_ssh = dl[2].cuda(), dl[3].cuda()
 			outputs_ssh = ssh(inputs_ssh)
 			loss_ssh = criterion(outputs_ssh, labels_ssh)
-			loss += loss_ssh.mean()
+			loss = loss_ssh.mean()
 
 		loss.backward()
 		optimizer.step()
 
-		batch_time.update(time.time() - end)
-		end = time.time()
+		#batch_time.update(time.time() - end)
+		#end = time.time()
 		if i % args.print_freq == 0:
 			progress.print(i)
 
@@ -102,6 +101,7 @@ if args.resume is not None:
 	all_err_cls, all_err_ssh = loss
 
 for epoch in range(args.start_epoch, args.epochs+1):
+	begin = time.time()
 	adjust_learning_rate(optimizer, epoch, args)
 	train(trloader, epoch)
 	teloader.dataset.switch_mode(True, False)
@@ -120,3 +120,6 @@ for epoch in range(args.start_epoch, args.epochs+1):
 	state = {'args': args, 'err_cls': err_cls, 'err_ssh': err_ssh, 
 				'optimizer': optimizer.state_dict(), 'net': net.state_dict(), 'head': head.state_dict()}
 	torch.save(state, args.outf + '/ckpt.pth')
+	runtime = time.time()-begin
+	print()
+	print('... completed in {:.0f}m {:.0f}s'.format(runtime // 60, runtime % 60))

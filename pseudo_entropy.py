@@ -1,5 +1,6 @@
 from __future__ import print_function
 from __future__ import division
+import sys
 import numpy as np
 import argparse
 import copy
@@ -7,11 +8,12 @@ import copy
 import torch
 import torch.nn as nn
 import torch.optim as optim
+import torchvision.transforms as transforms
 import torch.backends.cudnn as cudnn
 import torchvision
 import torch.utils.data as torchdata
 from torchvision import models as tv_model
-from models.ResNet import ResNetCifar as ResNet
+from math import e, log
 
 parser = argparse.ArgumentParser()
 ################################################################
@@ -31,7 +33,7 @@ dataset_name = args.dataset
 
 print('==> Building model..')
 net = tv_model.resnet18(pretrained=True)
-
+net = net.cuda()
 print('==> Preparing datasets..')
 val_transform = transforms.Compose([
         transforms.Resize(256),
@@ -39,7 +41,7 @@ val_transform = transforms.Compose([
         transforms.ToTensor(),
         transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
     ])
-torchvision.datasets.ImageFolder(root=dataset_root+dataset_name, transform=val_transform)
+dataset = torchvision.datasets.ImageFolder(root=dataset_root+dataset_name, transform=val_transform)
 loader = torchdata.DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=4)
 import time
 all_epoch_stats = []
@@ -74,6 +76,10 @@ def entropy_threshold(args, model, tg_te_loader):
 	print("==> Iterating through classification task and finding entropy...")
 	for dictionary in tg_te_loader:
 		counter+=1
+		sys.stdout.write('\r')
+		sys.stdout.write('[{:{}}] {:.1f}%'.format("="*(int(((counter)/len(tg_te_loader)*80))),\
+			 80, (100/len(tg_te_loader)*counter)))
+		sys.stdout.flush()
 		inputs = dictionary[0]
 		inputs = torch.stack([inputs])[0]
 		labels = dictionary[1]
@@ -94,13 +100,14 @@ def entropy_threshold(args, model, tg_te_loader):
 				acc.append(1)
 			else:
 				acc.append(0)
-	
+	print()	
+	print("Total accuracy:", sum(acc)/len(acc))
 	print("==> Accuracy per threshold...")
 	for i in range(10):
 		acc_cls = []
 		et = 0.1*(i+1)
 		for j in range(len(ent)):
-			if ent[j] <= et: #and ent[j] >= entropy_threshold-0.1:
+			if ent[j] <= et and ent[j] >= et-0.1:
 				acc_cls.append(acc[j])
 		print("Entropy:", et, str(len(acc_cls))+'/'+str(len(ent)))
 		print("\t ==> CLS_acc: "+str(sum(acc_cls)/len(acc_cls)))	

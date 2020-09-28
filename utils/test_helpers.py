@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 from utils.misc import *
 
-def test(teloader, model, verbose=False, print_freq=10):
+def test(teloader, model, verbose=False, print_freq=100):
     model.eval()
     batch_time = AverageMeter('Time', ':6.3f')
     top1 = AverageMeter('Acc@1', ':6.2f')
