@@ -42,7 +42,6 @@ parameters = list(net.parameters())+list(head.parameters())
 optimizer = torch.optim.SGD(parameters, lr=args.lr, momentum=0.9, weight_decay=1e-4)
 optimizer_ss = torch.optim.SGD(parameters, lr=args.lr_rotation, momentum=0.9, weight_decay=1e-4)
 criterion = nn.CrossEntropyLoss(reduction='none').cuda()
-
 def train(trloader, epoch):
 	net.train()
 	ssh.train()
@@ -54,9 +53,10 @@ def train(trloader, epoch):
 											prefix="Epoch: [{}]".format(epoch))
 
 	end = time.time()
+	print('CLS_lr:', optimizer.param_groups[0]['lr'],'Rot_lr:',optimizer_ss.param_groups[0]['lr'])
 	for i, dl in enumerate(trloader):
 		#data_time.update(time.time() - end)
-		optimizer_ss.zero_grad()
+		optimizer.zero_grad()
 
 		inputs_cls, labels_cls = dl[0].cuda(), dl[1].cuda()
 		outputs_cls = net(inputs_cls)
@@ -65,7 +65,7 @@ def train(trloader, epoch):
 		### appended ###
 		loss = loss_cls.mean()
 		loss.backward()
-		optimizer_ss.step()
+		optimizer.step()
 		losses.update(loss.item(), len(labels_cls))
 		
 		_, predicted = outputs_cls.max(1)
@@ -73,15 +73,15 @@ def train(trloader, epoch):
 		top1.update(acc1, len(labels_cls))
 
 
-		optimizer.zero_grad()
+		optimizer_ss.zero_grad()
 		if args.shared is not None:
 			inputs_ssh, labels_ssh = dl[2].cuda(), dl[3].cuda()
 			outputs_ssh = ssh(inputs_ssh)
 			loss_ssh = criterion(outputs_ssh, labels_ssh)
 			loss = loss_ssh.mean()
 
-		loss.backward()
-		optimizer.step()
+			loss.backward()
+			optimizer_ss.step()
 
 		#batch_time.update(time.time() - end)
 		#end = time.time()
@@ -102,7 +102,8 @@ if args.resume is not None:
 
 for epoch in range(args.start_epoch, args.epochs+1):
 	begin = time.time()
-	adjust_learning_rate(optimizer, epoch, args)
+	adjust_learning_rate_pretrain(optimizer, epoch, args.lr)
+	adjust_learning_rate_pretrain(optimizer_ss, epoch, args.lr_rotation)
 	train(trloader, epoch)
 	teloader.dataset.switch_mode(True, False)
 	err_cls = test(teloader, net)
@@ -116,6 +117,8 @@ for epoch in range(args.start_epoch, args.epochs+1):
 	all_err_ssh.append(err_ssh)
 	torch.save((all_err_cls, all_err_ssh), args.outf + '/loss.pth')
 	plot_epochs(all_err_cls, all_err_ssh, args.outf + '/loss.pdf')
+	torch.save(copy.deepcopy(head.state_dict()), args.outf+'/head.sav')
+	torch.save(copy.deepcopy(ssh.state_dict()), args.outf+'/ssh.sav')
 	torch.save(copy.deepcopy(net.state_dict()), args.outf+'/resnet18.sav')
 	state = {'args': args, 'err_cls': err_cls, 'err_ssh': err_ssh, 
 				'optimizer': optimizer.state_dict(), 'net': net.state_dict(), 'head': head.state_dict()}

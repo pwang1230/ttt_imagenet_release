@@ -33,6 +33,8 @@ dataset_name = args.dataset
 
 print('==> Building model..')
 net = tv_model.resnet18(pretrained=True)
+
+print(net)
 net = net.cuda()
 print('==> Preparing datasets..')
 val_transform = transforms.Compose([
