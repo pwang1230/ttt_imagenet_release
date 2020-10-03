@@ -40,7 +40,7 @@ _, trloader = prepare_train_data(args)
 
 parameters = list(net.parameters())+list(head.parameters())
 optimizer = torch.optim.SGD(parameters, lr=args.lr, momentum=0.9, weight_decay=1e-4)
-optimizer_ss = torch.optim.SGD(parameters, lr=args.lr_rotation, momentum=0.9, weight_decay=1e-4)
+#optimizer_ss = torch.optim.SGD(parameters, lr=args.lr_rotation, momentum=0.9, weight_decay=1e-4)
 criterion = nn.CrossEntropyLoss(reduction='none').cuda()
 def train(trloader, epoch):
 	net.train()
@@ -53,35 +53,28 @@ def train(trloader, epoch):
 											prefix="Epoch: [{}]".format(epoch))
 
 	end = time.time()
-	print('CLS_lr:', optimizer.param_groups[0]['lr'],'Rot_lr:',optimizer_ss.param_groups[0]['lr'])
+	#print('CLS_lr:', optimizer.param_groups[0]['lr'],'Rot_lr:',optimizer_ss.param_groups[0]['lr'])
+	print('CLS_lr:', optimizer.param_groups[0]['lr'])
 	for i, dl in enumerate(trloader):
-		#data_time.update(time.time() - end)
 		optimizer.zero_grad()
-
 		inputs_cls, labels_cls = dl[0].cuda(), dl[1].cuda()
 		outputs_cls = net(inputs_cls)
 		loss_cls = criterion(outputs_cls, labels_cls)
-
-		### appended ###
 		loss = loss_cls.mean()
-		loss.backward()
-		optimizer.step()
 		losses.update(loss.item(), len(labels_cls))
 		
 		_, predicted = outputs_cls.max(1)
 		acc1 = predicted.eq(labels_cls).sum().item() / len(labels_cls)
 		top1.update(acc1, len(labels_cls))
 
-
-		optimizer_ss.zero_grad()
 		if args.shared is not None:
 			inputs_ssh, labels_ssh = dl[2].cuda(), dl[3].cuda()
 			outputs_ssh = ssh(inputs_ssh)
 			loss_ssh = criterion(outputs_ssh, labels_ssh)
-			loss = loss_ssh.mean()
+			loss += loss_ssh.mean()
 
-			loss.backward()
-			optimizer_ss.step()
+		loss.backward()
+		optimizer.step()
 
 		#batch_time.update(time.time() - end)
 		#end = time.time()
