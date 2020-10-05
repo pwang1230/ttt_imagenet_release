@@ -96,7 +96,7 @@ if args.resume is not None:
 for epoch in range(args.start_epoch, args.epochs+1):
 	begin = time.time()
 	adjust_learning_rate_pretrain(optimizer, epoch, args.lr)
-	adjust_learning_rate_pretrain(optimizer_ss, epoch, args.lr_rotation)
+	#adjust_learning_rate_pretrain(optimizer_ss, epoch, args.lr_rotation)
 	train(trloader, epoch)
 	teloader.dataset.switch_mode(True, False)
 	err_cls = test(teloader, net)
