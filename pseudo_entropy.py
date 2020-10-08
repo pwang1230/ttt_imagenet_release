@@ -1,11 +1,13 @@
 from __future__ import print_function
 from __future__ import division
 import sys
+import os
 import numpy as np
 import argparse
 import copy
 
 import torch
+from norm_module import TTTBatchNorm2d, TTTGroupNorm
 import torch.nn as nn
 import torch.optim as optim
 import torchvision.transforms as transforms
@@ -19,7 +21,7 @@ parser = argparse.ArgumentParser()
 ################################################################
 parser.add_argument('--batch_size', default=64, type=int)
 parser.add_argument('--dataset', default='', type=str)
-
+parser.add_argument('--model', default='', type=str)
 args = parser.parse_args()
 
 cudnn.benchmark = True
@@ -30,19 +32,26 @@ channels = 3
 image_size = 224
 dataset_root = '/proj/vondrick/portia/ImageNet-C/'
 dataset_name = args.dataset
+model = args.model
+dataset_root = '/proj/vondrick/datasets/ImageNet-ILSVRC2012/val/'
 
 print('==> Building model..')
-net = tv_model.resnet18(pretrained=True)
-
-print(net)
+def bn_helper(num_features):
+		return TTTBatchNorm2d(num_features, ttt=False, \
+			momentum=0, track_running_stats=True )
+norm_layer = bn_helper
+net = tv_model.resnet18(pretrained=False, norm_layer = norm_layer)
+net = torch.nn.DataParallel(net)
+net.load_state_dict(torch.load(os.path.join(model,'resnet18.sav'),map_location='cuda:0'))
 net = net.cuda()
+
 print('==> Preparing datasets..')
 val_transform = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
-    ])
+		transforms.Resize(256),
+		transforms.CenterCrop(224),
+		transforms.ToTensor(),
+		transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+	])
 dataset = torchvision.datasets.ImageFolder(root=dataset_root+dataset_name, transform=val_transform)
 loader = torchdata.DataLoader(dataset, batch_size=args.batch_size, shuffle=False, num_workers=4)
 import time
@@ -54,7 +63,10 @@ def entropy_threshold(args, model, tg_te_loader):
 		num_labels = len(t)
 		ent = 0
 		for i in range(num_labels):
-			ent -= t[i]*log(t[i],base)
+			try:
+				ent -= t[i]*log(t[i],base)
+			except:
+				ent = ent
 		ent = ent / log(num_labels,base)
 		return ent
 

@@ -20,8 +20,8 @@ class TTTBatchNorm2d(nn.BatchNorm2d):
 		else:
 			if self.track_running_stats == True:
 				with torch.no_grad():
-					self.running_mean = (1-self.momentum)*self.running_mean + self.momentum*mean
-					self.running_var = (1-self.momentum)*self.running_var + self.momentum*var
+					self.running_mean.copy_((1-self.momentum)*self.running_mean + self.momentum*mean)
+					self.running_var.copy_((1-self.momentum)*self.running_var + self.momentum*var)
 			
 			if self.ttt == True: #Test time domain adaptation
 				y = y - self.running_mean.view(-1, 1)

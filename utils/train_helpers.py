@@ -80,6 +80,7 @@ def build_model(args):
 
 	ssh = ExtractorHead(ext, head).cuda()
 	net = torch.nn.DataParallel(net)
+	head = torch.nn.DataParallel(head)
 	ssh = torch.nn.DataParallel(ssh)
 	return net, ext, head, ssh
 

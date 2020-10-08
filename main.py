@@ -66,7 +66,7 @@ def train(trloader, epoch):
 		_, predicted = outputs_cls.max(1)
 		acc1 = predicted.eq(labels_cls).sum().item() / len(labels_cls)
 		top1.update(acc1, len(labels_cls))
-
+	
 		if args.shared is not None:
 			inputs_ssh, labels_ssh = dl[2].cuda(), dl[3].cuda()
 			outputs_ssh = ssh(inputs_ssh)
@@ -75,7 +75,6 @@ def train(trloader, epoch):
 
 		loss.backward()
 		optimizer.step()
-
 		#batch_time.update(time.time() - end)
 		#end = time.time()
 		if i % args.print_freq == 0:
