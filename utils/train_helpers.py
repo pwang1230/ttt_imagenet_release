@@ -45,7 +45,9 @@ def build_model(args):
 		print('with GN:')
 		print('\t==> num_groups:',args.group_norm)
 		def gn_helper(planes):
-			return nn.GroupNorm(args.group_norm, planes)
+			#return nn.GroupNorm(args.group_norm, planes)
+			return TTTGroupNorm(planes, args.num_groups,ttt=args.norm_slow_adapt,\
+				momentum=args.norm_momentum, track_running_stats=True )
 		norm_layer = gn_helper
 
 	
