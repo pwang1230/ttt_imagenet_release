@@ -102,7 +102,7 @@ class ImagePathFolder(datasets.ImageFolder):
 def prepare_train_data(args):
 	print('Preparing data...')
 	traindir = os.path.join(args.dataroot, 'train')
-	trset = RotateImageFolder(traindir, tr_transforms, original=True, rotation=args.rotation,
+	trset = RotateImageFolder_csv(args.csv_path, traindir, tr_transforms, original=True, rotation=args.rotation,
 														rotation_transform=rotation_tr_transforms)
 	trloader = torch.utils.data.DataLoader(trset, batch_size=args.batch_size, shuffle=True,
 													num_workers=args.workers, pin_memory=True)
@@ -113,13 +113,13 @@ def prepare_test_data(args, use_transforms=True):
 	if not hasattr(args, 'corruption') or args.corruption == 'original':
 		print('Test on the original test set')
 		validdir = os.path.join(args.dataroot, 'val')
-		teset = RotateImageFolder(validdir, te_transforms_local, original=False, rotation=False,
+		teset = RotateImageFolder_csv(args.csv_path, validdir, te_transforms_local, original=False, rotation=False,
 													rotation_transform=rotation_te_transforms)
 
 	elif args.corruption in common_corruptions:
 		print('Test on %s level %d' %(args.corruption, args.level))
 		validdir = os.path.join(args.dataroot, 'imagenet-c', args.corruption, str(args.level))
-		teset = RotateImageFolder(validdir, te_transforms_local, original=False, rotation=False,
+		teset = RotateImageFolder_csv(args.csv_path, validdir, te_transforms_local, original=False, rotation=False,
 													rotation_transform=rotation_te_transforms)
 
 	elif args.corruption == 'video':
