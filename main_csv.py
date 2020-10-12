@@ -14,8 +14,9 @@ parser.add_argument('--dataroot', default='/proj/vondrick/datasets/ImageNet-ILSV
 parser.add_argument('--shared', default=None)
 ########################################################################
 parser.add_argument('--depth', default=18, type=int)
-parser.add_argument('--csv_path', dedault='ILSVRC-100_layer_0_comp0_left_20.0%.csv', type=str)
+parser.add_argument('--csv_path', default='ILSVRC-100_layer_0_comp0_left_20.0%.csv', type=str)
 parser.add_argument('--group_norm', default=0, type=int)
+parser.add_argument('--eval_with_rs', default=0, type=int)
 parser.add_argument('--batch_size', default=128, type=int)
 parser.add_argument('--workers', default=8, type=int)
 parser.add_argument('--norm_slow_adapt', action='store_true')
@@ -32,8 +33,7 @@ parser.add_argument('--resume', default=None)
 parser.add_argument('--outf', default='.')
 
 args = parser.parse_args()
-
-args.csv_path = '/proj/vondrick/portia/Novelty_ImageNet/results/ILSVRC_csv/'+args.csv_path
+args.csv_root = '/proj/vondrick/portia/Novelty_ImageNet/results/ILSVRC_csv/'
 my_makedir(args.outf)
 
 print("Training with dataset ==> ", args.csv_path)

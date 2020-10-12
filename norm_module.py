@@ -33,18 +33,31 @@ class TTTBatchNorm2d(nn.BatchNorm2d):
 		y = self.weight.view(-1, 1) * y + self.bias.view(-1, 1)
 		return y.view(return_shape).transpose(0,1)
 
-class TTTGroupNorm(nn.Module):
-	def __init__(self, num_features, num_groups, ttt, eps=1e-5, momentum=0.1, track_running_stats:bool=True):
-		super(TTTGroupNorm, self).__init__()
+class TTTGroupNorm(nn.BatchNorm2d):
+	def __init__(self, num_features, num_groups, ttt, eps=1e-5, momentum=0.1, track_running_stats:bool=True, eval_with_rs=False):
+		super(TTTGroupNorm, self).__init__(num_features, eps, momentum, True, track_running_stats)
 		self.ttt = ttt
 		self.weight = nn.Parameter(torch.ones(1,num_features,1,1))
 		self.bias = nn.Parameter(torch.zeros(1,num_features,1,1))
 		self.num_groups = num_groups
 		self.eps = eps
-		self.running_mean = None
-		self.running_var = None
+		self.eval_with_rs = eval_with_rs
 		self.momentum = momentum
 		self.track_running_stats = track_running_stats
+
+	def encode_val(self, data, target):
+		with torch.no_grad():
+			t_dim = target.shape
+			l = torch.flatten(target).shape[0]
+			l -= torch.flatten(data).shape[0]
+			padding = torch.zeros(l).cuda()
+			new_data = torch.reshape(torch.cat([torch.flatten(data),padding]),t_dim)
+			target.copy_(new_data)
+
+	def extract_val(self,target):
+		#extracted into shape (group_norm,1)
+		data = torch.flatten(target)
+		return torch.reshape(data[:self.num_groups],(self.num_groups,1))
 
 	def forward(self, x):
 		N,C,H,W = x.size()
@@ -54,33 +67,35 @@ class TTTGroupNorm(nn.Module):
 		x = x.view(N,G,-1)
 		mean = x.mean(-1, keepdim=True)
 		var = x.var(-1, keepdim=True)
-		#x = (x-mean) / (var+self.eps).sqrt()
-		#x = x.view(N,C,H,W)
-		return x * self.weight + self.bias
 
-		#mean = mean.mean(0,keepdim=True)
-		#var = var.var(0,keepdim=True)
+		mean = mean.mean(0,keepdim=True)
+		var = var.mean(0,keepdim=True)
 		if self.training:
-			if self.running_mean == None:
-				self.running_mean = mean.mean(0,keepdim=True)
-				self.running_var = var.var(0,keepdim=True)
-			elif self.track_running_stats == True:
-				#print(N,C,H,W)
-				#print(self.running_mean.shape,mean.shape, self.weight.shape, self.num_groups)
-				self.running_mean = (1-self.momentum)*self.running_mean + self.momentum*mean.mean(0,keepdim=True)
-				self.running_var = (1-self.momentum)*self.running_var + self.momentum*var.var(0,keepdim=True)
-			
+			if self.track_running_stats == True:
+				running_mean = self.extract_val(self.running_mean)
+				running_var = self.extract_val(self.running_var)
+				self.encode_val((1-self.momentum)*running_mean + self.momentum*mean.mean(0,keepdim=True), self.running_mean)
+				self.encode_val((1-self.momentum)*running_var + self.momentum*var.mean(0,keepdim=True), self.running_var)
 			if self.ttt:
 				#Use running mean and var to send forward input
-				x = (x-self.running_mean) / (self.running_var+self.eps).sqrt()
+				running_mean = self.extract_val(self.running_mean)
+				running_var = self.extract_val(self.running_var)
+				x = (x-running_mean) / (running_var+self.eps).sqrt()
 				x = x.view(N,C,H,W)
 			else:
 				#User current mean
 				x = (x-mean) / (var+self.eps).sqrt()
 				x = x.view(N,C,H,W)
 		else:
-			#x = (x-mean) / (var+self.eps).sqrt()			
-			x = (x-self.running_mean) / (self.running_var+self.eps).sqrt()
+			if self.eval_with_rs == False:
+				#evaluate with current mean and var
+				x = (x-mean) / (var+self.eps).sqrt()			
+			else:
+				#evaluate with running stats
+				running_mean = self.extract_val(self.running_mean)
+				running_var = self.extract_val(self.running_var)
+				x = (x-running_mean) / (running_var+self.eps).sqrt()
 			x = x.view(N,C,H,W)
 		return x * self.weight + self.bias
+
 

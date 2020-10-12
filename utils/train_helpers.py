@@ -9,7 +9,7 @@ import torchvision.datasets as datasets
 import torchvision.models as models
 import torch.utils.data
 
-from utils.rotation import RotateImageFolder
+from utils.rotation import RotateImageFolder, RotateImageFolder_csv
 from models.SSHead import *
 from norm_module import TTTBatchNorm2d, TTTGroupNorm
 
@@ -44,10 +44,13 @@ def build_model(args):
 	else: #Group normalization
 		print('with GN:')
 		print('\t==> num_groups:',args.group_norm)
+		print('\t==> norm_slow_adapt', args.norm_slow_adapt)
+		print('\t==> momentum:',args.norm_momentum)
+		print('\t==> eval_with_rs',args.eval_with_rs)
 		def gn_helper(planes):
 			#return nn.GroupNorm(args.group_norm, planes)
-			return TTTGroupNorm(planes, args.num_groups,ttt=args.norm_slow_adapt,\
-				momentum=args.norm_momentum, track_running_stats=True )
+			return TTTGroupNorm(planes, args.group_norm,ttt=args.norm_slow_adapt,\
+				momentum=args.norm_momentum, track_running_stats=True , eval_with_rs=args.eval_with_rs)
 		norm_layer = gn_helper
 
 	
@@ -79,7 +82,6 @@ def build_model(args):
 		head = copy.deepcopy([net.layer3, net.layer4, net.avgpool, 
 								ViewFlatten(), nn.Linear(expansion * planes * width, 4)])
 		head = nn.Sequential(*head)
-
 	ssh = ExtractorHead(ext, head).cuda()
 	net = torch.nn.DataParallel(net)
 	head = torch.nn.DataParallel(head)
@@ -102,7 +104,7 @@ class ImagePathFolder(datasets.ImageFolder):
 def prepare_train_data(args):
 	print('Preparing data...')
 	traindir = os.path.join(args.dataroot, 'train')
-	trset = RotateImageFolder_csv(args.csv_path, traindir, tr_transforms, original=True, rotation=args.rotation,
+	trset = RotateImageFolder_csv(os.path.join(args.csv_root,'train',args.csv_path), traindir, tr_transforms, original=True, rotation=args.rotation,
 														rotation_transform=rotation_tr_transforms)
 	trloader = torch.utils.data.DataLoader(trset, batch_size=args.batch_size, shuffle=True,
 													num_workers=args.workers, pin_memory=True)
@@ -113,13 +115,13 @@ def prepare_test_data(args, use_transforms=True):
 	if not hasattr(args, 'corruption') or args.corruption == 'original':
 		print('Test on the original test set')
 		validdir = os.path.join(args.dataroot, 'val')
-		teset = RotateImageFolder_csv(args.csv_path, validdir, te_transforms_local, original=False, rotation=False,
+		teset = RotateImageFolder_csv(os.path.join(args.csv_root,'val',args.csv_path), validdir, te_transforms_local, original=False, rotation=False,
 													rotation_transform=rotation_te_transforms)
 
 	elif args.corruption in common_corruptions:
 		print('Test on %s level %d' %(args.corruption, args.level))
-		validdir = os.path.join(args.dataroot, 'imagenet-c', args.corruption, str(args.level))
-		teset = RotateImageFolder_csv(args.csv_path, validdir, te_transforms_local, original=False, rotation=False,
+		validdir = os.path.join(args.dataroot, args.corruption, str(args.level))
+		teset = RotateImageFolder(validdir, te_transforms_local, original=False, rotation=False,
 													rotation_transform=rotation_te_transforms)
 
 	elif args.corruption == 'video':
@@ -142,7 +144,7 @@ def adjust_learning_rate(optimizer, epoch, args):
 
 def adjust_learning_rate_pretrain(optimizer, epoch, lr):
     """Sets the learning rate to the initial LR decayed by 10 every 30 epochs"""
-    lr = lr * (0.1 ** (epoch // 20))
+    lr = lr * (0.1 ** (epoch // 25))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
