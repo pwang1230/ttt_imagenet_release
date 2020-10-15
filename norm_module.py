@@ -1,3 +1,4 @@
+import numpy as np
 import torch
 import torch.nn as nn
 
@@ -41,6 +42,7 @@ class TTTGroupNorm(nn.BatchNorm2d):
 		self.bias = nn.Parameter(torch.zeros(1,num_features,1,1))
 		self.num_groups = num_groups
 		self.eps = eps
+		self.iteration_count = 0
 		self.eval_with_rs = eval_with_rs
 		self.momentum = momentum
 		self.track_running_stats = track_running_stats
@@ -67,20 +69,28 @@ class TTTGroupNorm(nn.BatchNorm2d):
 		x = x.view(N,G,-1)
 		mean = x.mean(-1, keepdim=True)
 		var = x.var(-1, keepdim=True)
-
-		mean = mean.mean(0,keepdim=True)
-		var = var.mean(0,keepdim=True)
 		if self.training:
 			if self.track_running_stats == True:
 				running_mean = self.extract_val(self.running_mean)
 				running_var = self.extract_val(self.running_var)
+				
 				self.encode_val((1-self.momentum)*running_mean + self.momentum*mean.mean(0,keepdim=True), self.running_mean)
 				self.encode_val((1-self.momentum)*running_var + self.momentum*var.mean(0,keepdim=True), self.running_var)
 			if self.ttt:
 				#Use running mean and var to send forward input
 				running_mean = self.extract_val(self.running_mean)
 				running_var = self.extract_val(self.running_var)
-				x = (x-running_mean) / (running_var+self.eps).sqrt()
+				#x = (x-running_mean) / (running_var+self.eps).sqrt()
+				self.iteration_count +=1
+				alpha = 20
+				beta = 0.5
+				w_c = (self.iteration_count/alpha)/(self.iteration_count/alpha-np.log(beta))
+				w_r = 1-w_c
+				
+				#w_c = 0.99
+				#w_r = 0.01
+				x = (x-(w_r*running_mean+w_c*mean)) / (w_r*running_var+w_c*var+self.eps).sqrt()
+				
 				x = x.view(N,C,H,W)
 			else:
 				#User current mean
