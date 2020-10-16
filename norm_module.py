@@ -87,8 +87,8 @@ class TTTGroupNorm(nn.BatchNorm2d):
 				w_c = (self.iteration_count/alpha)/(self.iteration_count/alpha-np.log(beta))
 				w_r = 1-w_c
 				
-				#w_c = 0.99
-				#w_r = 0.01
+				w_c = 0.99
+				w_r = 0.01
 				x = (x-(w_r*running_mean+w_c*mean)) / (w_r*running_var+w_c*var+self.eps).sqrt()
 				
 				x = x.view(N,C,H,W)

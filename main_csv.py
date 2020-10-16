@@ -34,6 +34,8 @@ parser.add_argument('--outf', default='.')
 
 args = parser.parse_args()
 args.csv_root = '/proj/vondrick/portia/Novelty_ImageNet/results/ILSVRC_csv/'
+#args.csv_path = '/proj/vondrick/portia/Novelty_ImageNet/results/ILSVRC_csv/train/'+args.csv_path
+
 my_makedir(args.outf)
 
 print("Training with dataset ==> ", args.csv_path)

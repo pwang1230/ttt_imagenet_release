@@ -3,7 +3,7 @@ import argparse
 import torch
 import torch.nn as nn
 import torch.optim as optim
-
+import time
 from tqdm import tqdm
 from utils.misc import *
 from utils.adapt_helpers import *
@@ -33,7 +33,7 @@ parser.add_argument('--resume', default=None)
 parser.add_argument('--outf', default='.')
 
 args = parser.parse_args()
-
+args.csv_root = '/proj/vondrick/portia/Novelty_ImageNet/results/ILSVRC_csv/'
 args.csv_path = '/proj/vondrick/portia/Novelty_ImageNet/results/ILSVRC_csv/val/'+args.csv_path
 
 args.threshold += 0.001		# to correct for numeric errors

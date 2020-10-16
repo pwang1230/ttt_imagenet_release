@@ -115,7 +115,7 @@ def prepare_test_data(args, use_transforms=True):
 	if not hasattr(args, 'corruption') or args.corruption == 'original':
 		print('Test on the original test set',args.csv_path)
 		validdir = os.path.join(args.dataroot, 'val')
-		teset = RotateImageFolder_csv(args.csv_path, validdir, te_transforms_local, original=False, rotation=False,
+		teset = RotateImageFolder_csv(os.path.join(args.csv_root,'val',args.csv_path), validdir, te_transforms_local, original=False, rotation=False,
 													rotation_transform=rotation_te_transforms)
 
 	elif args.corruption in common_corruptions:
